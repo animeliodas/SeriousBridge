@@ -9,6 +9,7 @@ SeriousBridge — ядро «мостов» между Serious Sam Classic (The 
 | **SeriousBridge** (этот) | ядро для плагинов Sam (`core/sam`), протокол, физика, транспорт, проверочные стенды |
 | [SemCraft 2](https://github.com/animeliodas/SemCraft2) | Minecraft 26.3 внутри Sam: гость работает рядом, его мир вклеивается в кадр Sam с глубиной; блоки, мобы, оружие, элитры, вода, поршни, лодки, интерфейс Minecraft, Стив от третьего лица |
 | [SeriousPortal](https://github.com/animeliodas/SeriousPortal) | портальная пушка Portal: правила Portal переписаны в плагине, звуки — из вашей Portal |
+| [SeriousHL](https://github.com/animeliodas/SeriousHL) | движение Half-Life 1: бег, стрейф в воздухе, банихоп; установка в один клик |
 | Doom (в планах) | классический Doom — [ROADMAP](docs/ROADMAP.md) |
 
 > Сделано с помощью Claude Code (ИИ). Всё «работает» — с оракулами в реальной игре (скрипты печатают PASS/FAIL); что
@@ -27,7 +28,8 @@ SeriousBridge — ядро «мостов» между Serious Sam Classic (The 
 | `Alloc` | `new/delete` плагина — на куче движка (иначе две CRT ломают кучу) | всегда |
 | `Player` | локальный игрок, свойства Player.es (здоровье, броня, вид, бонусы TSE), поворот и заморозка вида | всегда |
 | `Physics` | силы по ID (импульс, сдвиг, телепорт), режим движения против гравитации Sam, езда на транспорте гостя | всегда |
-| `DevHook` | консольные команды из файла — тесты без мыши и клавиатуры игрока | всегда |
+| `Movement` | движение игрока по правилам другой игры целиком (патч `CMovableEntity::PreMoving`: движение Сэма не мешает) | всегда |
+| `DevHook` | консольные команды из файла — тесты без мыши и клавиатуры игрока; сторож: зависшая игра пишет, где стоит | всегда |
 | `Link`, `Json` | WebSocket-клиент к гостю на 127.0.0.1, разбор JSON | `SBridgeGuestBeside` |
 | `LevelExport`, `Movers` | геометрия уровня (`.tri`) и подвижные браши (`.mov`) для гостя, их движение и триггеры | `SBridgeGuestBeside` |
 | `Actors`, `Weapons` | монстры Sam для гостя (двойники, урон, отдача), выстрелы и снаряды Sam | `SBridgeGuestBeside` |

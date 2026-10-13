@@ -19,7 +19,7 @@
 #endif
 
 #ifndef SB_FRAME_MEMORY
-#define SB_FRAME_MEMORY L"Local\SeriousBridgeFrame"
+#define SB_FRAME_MEMORY L"Local\\SeriousBridgeFrame"
 #endif
 
 #endif

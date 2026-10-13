@@ -30,6 +30,11 @@ INDEX PropIndex(CEntity *pen, ULONG ulID, INDEX iDefault) {
   return pi != NULL ? *pi : iDefault;
 };
 
+CEntity *PropEntity(CEntity *pen, ULONG ulID) {
+  CEntityPointer *pep = (CEntityPointer *)Prop(pen, ulID);
+  return pep != NULL ? pep->ep_pen : NULL;
+};
+
 FLOAT PowerupLeft(CEntity *penPlayer, INDEX iPowerup) {
   const FLOAT tmUntil = PropFloat(penPlayer, PROP_POWERUPS + iPowerup, 0.0f);
   return Max(tmUntil - _pTimer->CurrentTick(), 0.0f);

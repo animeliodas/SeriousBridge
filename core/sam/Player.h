@@ -13,12 +13,16 @@ namespace player {
 static const ULONG PROP_ARMOR = (401UL << 8) | 3;
 static const ULONG PROP_TOPHEALTH = (401UL << 8) | 6;       // m_fMaxHealth: the health a level starts with (100; 200 on easy)
 static const ULONG PROP_VIEWSTATE = (401UL << 8) | 20;      // m_iViewState: PVT_3RDPERSONVIEW = 3
+static const ULONG PROP_STATE = (401UL << 8) | 34;          // m_pstState: PlayerState below
+static const ULONG PROP_CAMERA = (401UL << 8) | 40;         // m_penCamera: a cinematic (a level's intro) plays while set
+static const ULONG PROP_ACTION_MARKER = (401UL << 8) | 110; // m_penActionMarker: auto actions (walking to a marker) while set
 static const ULONG PROP_LAST_ROTATION = (401UL << 8) | 151; // what the last applied action carried
 static const ULONG PROP_LOCAL_ROTATION = (401UL << 8) | 154; // the rotation actions are composed from (the mouse adds to it)
 static const ULONG PROP_POWERUPS = (401UL << 8) | 160;      // m_tmInvisibility, ..Invulnerability, ..SeriousDamage, ..SeriousSpeed
 static const ULONG PROP_SERIOUSBOMBS = (401UL << 8) | 190;  // m_iSeriousBombCount
 
 enum Powerup { PU_INVISIBILITY = 0, PU_INVULNERABILITY = 1, PU_SERIOUSDAMAGE = 2, PU_SERIOUSSPEED = 3 };
+enum PlayerState { PST_STAND = 0, PST_CROUCH = 1, PST_SWIM = 2, PST_DIVE = 3, PST_FALL = 4 };
 static const INDEX VIEW_THIRD_PERSON = 3;
 
 // The local player (the first one), NULL between levels or while the world loads.
@@ -28,6 +32,8 @@ CEntity *Local(void);
 void *Prop(CEntity *pen, ULONG ulID);
 FLOAT PropFloat(CEntity *pen, ULONG ulID, FLOAT fDefault);
 INDEX PropIndex(CEntity *pen, ULONG ulID, INDEX iDefault);
+// An entity pointer property (CEntityPointer), NULL when unset or the class has none such.
+CEntity *PropEntity(CEntity *pen, ULONG ulID);
 // Seconds left of a TSE powerup, 0 when none.
 FLOAT PowerupLeft(CEntity *penPlayer, INDEX iPowerup);
 
