@@ -28,6 +28,7 @@ a guest maps them to its own world in one place.
 | `{"t":"screen","open":"inventory"\|"chat"\|""[,"text":"..."]}` | a guest screen asked for / closed | |
 | `{"t":"cursor","x":0..1,"y":0..1}`, `{"t":"click","b":0\|1\|2,"down":b,"shift":b}`, `{"t":"char","c":codepoint}`, `{"t":"keydown","sc":usbScancode,"kc":keycode,"mods":m}`, `{"t":"scrollgui","d":±1}` | a guest screen is open | Sam's mouse and keyboard go to it |
 | `{"t":"chat","m":"..."}` | Sam's chat line | the guest's chat; "/..." is a guest command |
+| `{"t":"steer","f":-1..1,"s":-1..1,"jump":b,"down":b}` | riding, on a change and twice a second | Sam's movement keys for the vehicle (the guest presses its own keys) |
 
 ## Core: guest → Sam
 | Message | Meaning |
@@ -36,13 +37,14 @@ a guest maps them to its own world in one place.
 | `{"t":"hurt","d":samHp,"src":"kind","from":[x,y,z]}` | the guest's world hurt the player (Sam hp units) |
 | `{"t":"push","v":[x,y,z]}` | knockback as Sam m/s |
 | `{"t":"shove","d":[x,y,z],"by":"piston"}` | the guest moved the player this far (metres) |
-| `{"t":"actorhit","id":N,"d":samHp,"boom":b,"from":"kind"}` | the guest hit a Sam monster's stand-in |
+| `{"t":"actorhit","id":N,"d":samHp,"boom":b,"from":"kind","kb":[x,y,z]}` | the guest hit a Sam monster's stand-in (`kb`: the knockback it would give, m/s) |
 | `{"t":"actorpush","id":N,"d":[x,y,z]}` | the guest moved a Sam monster's stand-in |
 | `{"t":"blocks","set":[x,y,z,...],"clear":[...]}` | solid guest cells appeared / went (minimum corners): Sam makes them solid |
 | `{"t":"fluid","water":h,"lava":h,"eyes":b,"flow":[x,y,z]}` | guest fluid at the player's feet: Sam's player swims by the guest's rules |
 | `{"t":"trigger","mover":i}` | the guest's logic (redstone) triggers Sam's moving brush i |
 | `{"t":"projhit","id":N}` | a Sam projectile hit something in the guest and is gone |
 | `{"t":"screen","open":false}` / `{"t":"screen","open":"Name"}` | the guest closed its screen / opened one itself |
+| `{"t":"ride","on":true,"kind":"oak_boat","p":[x,y,z],"v":[x,y,z],"yaw":deg}` / `{"t":"ride","on":false}` | the player rides a guest vehicle: its seat (his feet) and velocity every tick, its yaw (turning it turns his view) — docs/TRANSPORT.md |
 | `{"t":"level_ready","hash":"<hex>","blocks":N}`, `{"t":"log","m":"..."}` | progress, diagnostics |
 
 ## Guest extensions (SemCraft 2 / Minecraft)

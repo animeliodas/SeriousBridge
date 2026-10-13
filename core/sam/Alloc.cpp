@@ -1,10 +1,11 @@
-/* SeriousPortal - the plugin's heap is the engine's.
+/* SeriousBridge core - the plugin's heap is the engine's.
  *
  * The plugin has its own C runtime, the engine another; a block allocated by one and freed by the other corrupts the
  * heap. Building brushes hands arrays back and forth (we fill a CObject3D, the engine optimizes and frees it), so every
  * new/delete here goes through the engine's AllocMemory/FreeMemory: memory either side frees came from the same heap.
  */
 #include "StdH.h"
+#include "SBridge.h"
 
 #include <new>
 

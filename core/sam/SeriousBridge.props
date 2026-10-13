@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SeriousBridge core for a Serious Sam Classic plugin (Classics Patch 1.9.4 SDK). A port's .vcxproj imports this after
+  Microsoft.Cpp.props:
+
+    <Import Project="$(SeriousBridgeDir)core\sam\SeriousBridge.props" />
+
+  with SeriousBridgeDir = the SeriousBridge checkout, ending in a backslash (build.sh passes it; by default the folder
+  "seriousbridge" next to the port's). The core's sources are compiled into the port's DLL with the port's precompiled
+  header StdH.h, which defines SB_NAME and friends (SBridge.h).
+
+  Always: Alloc (the engine's heap), Player, Physics, DevHook.
+  SBridgeGuestBeside=true adds what a guest game running next to Sam needs (SemCraft 2): the link (WebSocket), the
+  level export, moving brushes, monsters, weapons, the guest's solid cells and its frame composited with depth.
+-->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <SeriousBridgeCore>$(SeriousBridgeDir)core\sam\</SeriousBridgeCore>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(SeriousBridgeCore);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="$(SeriousBridgeCore)SBridge.h" />
+    <ClInclude Include="$(SeriousBridgeCore)Player.h" />
+    <ClInclude Include="$(SeriousBridgeCore)Physics.h" />
+    <ClInclude Include="$(SeriousBridgeCore)DevHook.h" />
+    <ClCompile Include="$(SeriousBridgeCore)Alloc.cpp" />
+    <ClCompile Include="$(SeriousBridgeCore)Player.cpp" />
+    <ClCompile Include="$(SeriousBridgeCore)Physics.cpp" />
+    <ClCompile Include="$(SeriousBridgeCore)DevHook.cpp" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(SBridgeGuestBeside)' == 'true'">
+    <ClInclude Include="$(SeriousBridgeCore)Link.h" />
+    <ClInclude Include="$(SeriousBridgeCore)Json.h" />
+    <ClInclude Include="$(SeriousBridgeCore)GlDraw.h" />
+    <ClInclude Include="$(SeriousBridgeCore)Compositor.h" />
+    <ClInclude Include="$(SeriousBridgeCore)LevelExport.h" />
+    <ClInclude Include="$(SeriousBridgeCore)Movers.h" />
+    <ClInclude Include="$(SeriousBridgeCore)Actors.h" />
+    <ClInclude Include="$(SeriousBridgeCore)Weapons.h" />
+    <ClInclude Include="$(SeriousBridgeCore)Blocks.h" />
+    <ClCompile Include="$(SeriousBridgeCore)Compositor.cpp" />
+    <ClCompile Include="$(SeriousBridgeCore)LevelExport.cpp" />
+    <ClCompile Include="$(SeriousBridgeCore)Movers.cpp" />
+    <ClCompile Include="$(SeriousBridgeCore)Actors.cpp" />
+    <ClCompile Include="$(SeriousBridgeCore)Weapons.cpp" />
+    <ClCompile Include="$(SeriousBridgeCore)Blocks.cpp" />
+    <ClCompile Include="$(SeriousBridgeCore)GlDraw.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="$(SeriousBridgeCore)Link.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+  </ItemGroup>
+</Project>
