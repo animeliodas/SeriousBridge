@@ -12,6 +12,7 @@ namespace movement {
 static const FLOAT SAM_RUN = 10.0f;
 
 static Rules _pRules = NULL;
+static ActionFilter _pActionFilter = NULL;
 static BOOL _bHooked = FALSE, _bActionHooked = FALSE, _bBroken = FALSE;
 static CEntity *_penTracked = NULL;
 static ULONG _ulTracked = 0;
@@ -214,7 +215,14 @@ static CApplyAction _pApplyAction = NULL;
 class CPlayerHook : public CEntity {
 public:
   void P_ApplyAction(const CPlayerAction &pa, FLOAT tmLatency) {
-    if (this == _penTracked && en_ulID == _ulTracked && !IsPredictor()) TakeKeys(pa);
+    if (this == _penTracked && en_ulID == _ulTracked && !IsPredictor()) {
+      // the port may take buttons out of it first (its own use of them)
+      CPlayerAction paPort = pa;
+      if (_pActionFilter != NULL) _pActionFilter(this, paPort);
+      TakeKeys(paPort);
+      (this->*_pApplyAction)(paPort, tmLatency);
+      return;
+    }
     (this->*_pApplyAction)(pa, tmLatency);
   };
 };
@@ -267,6 +275,7 @@ void Release(void) {
 };
 
 BOOL Active(void) { return _bTaken; };
+void SetActionFilter(ActionFilter pFilter) { _pActionFilter = pFilter; };
 CEntity *Tracked(void) { return _penTracked; };
 
 CTString Status(void) {

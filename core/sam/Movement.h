@@ -63,6 +63,10 @@ typedef BOOL (*Rules)(CEntity *penPlayer, const State &st, Result &res);
 BOOL Init(Rules pRules);
 // Every tick (OnStep): the player whose movement the rules take (the local one; NULL: none).
 void Track(CEntity *penPlayer);
+// A port's look at every action Player.es is about to apply for the tracked player: it may change it (take its own
+// buttons out - SeriousHL's weapons take fire and reload). Needs the applied action hooked (Init).
+typedef void (*ActionFilter)(CEntity *penPlayer, CPlayerAction &pa);
+void SetActionFilter(ActionFilter pFilter);
 // Every player action (from the network): its keys - used only if the applied action (CPlayer::ApplyAction in the
 // Entities library) couldn't be hooked.
 void OnAction(const CPlayerAction &pa, BOOL bFresh);
