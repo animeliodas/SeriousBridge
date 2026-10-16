@@ -12,7 +12,7 @@ namespace movement {
 static const FLOAT SAM_RUN = 10.0f;
 
 static Rules _pRules = NULL;
-static BOOL _bHooked = FALSE, _bBroken = FALSE;
+static BOOL _bHooked = FALSE, _bActionHooked = FALSE, _bBroken = FALSE;
 static CEntity *_penTracked = NULL;
 static ULONG _ulTracked = 0;
 
@@ -99,11 +99,16 @@ static void Apply(CMovableEntity *pmen, const Result &res) {
   pmen->en_fDeceleration = 0.0f;
   if (pmen->en_vDesiredTranslationRelative(2) > 0.0f) pmen->en_vDesiredTranslationRelative(2) = 0.0f;
   pmen->en_fStepDnHeight = -1.0f;
-  if (res.bJumped) {
+  if (res.bJumped || res.bLifted) {
     // off the ground, as Sam's own jump leaves it (Player.es plays the jump sound next tick)
     pmen->en_penReference = NULL;
     pmen->en_pbpoStandOn = NULL;
-    pmen->en_tmJumped = _pTimer->CurrentTick();
+    if (res.bJumped) pmen->en_tmJumped = _pTimer->CurrentTick();
+  }
+  if (res.bHoldCrouch) {
+    // Player.es lets him crouch only in his first half second off the ground
+    FLOAT *pfFallTime = (FLOAT *)player::Prop(pmen, player::PROP_FALLTIME);
+    if (pfFallTime != NULL) *pfFallTime = 0.0f;
   }
   CEntity *penReference = pmen->en_penReference.ep_pen;
 
@@ -139,7 +144,7 @@ static void Apply(CMovableEntity *pmen, const Result &res) {
   _bHave = TRUE;
   _tmEnd = _pTimer->CurrentTick();
   _ctTicks++;
-  _bGround = res.bJumped ? FALSE : (penReference != NULL);
+  _bGround = (res.bJumped || res.bLifted) ? FALSE : (penReference != NULL);
 };
 
 static void Tick(CMovableEntity *pmen) {
@@ -151,7 +156,7 @@ static void Tick(CMovableEntity *pmen) {
   if (_bTaken && _bHave && _pTimer->CurrentTick() == _tmEnd) return; // (done this tick)
   State st;
   FillState(pmen, st);
-  Result res = { FLOAT3D(0, 0, 0), FLOAT3D(0, 0, 0), FALSE };
+  Result res = { FLOAT3D(0, 0, 0), FLOAT3D(0, 0, 0), FALSE, FALSE, FALSE };
   if (!_pRules(pmen, st, res)) {
     GiveToSam("the port's rules are off");
     return;
@@ -194,8 +199,35 @@ public:
   };
 };
 
+static void TakeKeys(const CPlayerAction &pa) {
+  const FLOAT3D &vKeys = pa.pa_vTranslation;
+  _keys.fForward = Clamp(-vKeys(3) / SAM_RUN, -1.0f, 1.0f);
+  _keys.fSide = Clamp(vKeys(1) / SAM_RUN, -1.0f, 1.0f);
+  _keys.bJump = vKeys(2) > 0.1f;
+  _keys.bDuck = vKeys(2) < -0.01f;
+};
+
+// the action Player.es applies this tick (CPlayer::ApplyAction, in the Entities library): its keys are the tick's own
+typedef void (CEntity::*CApplyAction)(const CPlayerAction &, FLOAT);
+static CApplyAction _pApplyAction = NULL;
+
+class CPlayerHook : public CEntity {
+public:
+  void P_ApplyAction(const CPlayerAction &pa, FLOAT tmLatency) {
+    if (this == _penTracked && en_ulID == _ulTracked && !IsPredictor()) TakeKeys(pa);
+    (this->*_pApplyAction)(pa, tmLatency);
+  };
+};
+
 BOOL Init(Rules pRules) {
   _pRules = pRules;
+  StructPtr ptrAction(ClassicsCore_GetEntitiesSymbol("?ApplyAction@CPlayer@@UAEXABVCPlayerAction@@M@Z"));
+  if (ptrAction.iAddress != NULL) {
+    _pApplyAction = ptrAction(CApplyAction());
+    HFuncPatch hAction = CreatePatch(_pApplyAction, &CPlayerHook::P_ApplyAction, SB_NAME ": CPlayer::ApplyAction()");
+    _bActionHooked = hAction != NULL && hAction->IsPatched();
+  }
+  if (!_bActionHooked) CPrintF(SB_TAG " (CPlayer::ApplyAction not hooked: the keys come from the network's actions)\n");
   StructPtr ptr(ClassicsCore_GetEngineSymbol("?PreMoving@CMovableEntity@@UAEXXZ"));
   if (ptr.iAddress == NULL) {
     CPrintF("^cff0000" SB_TAG "^r CMovableEntity::PreMoving isn't in the engine: Sam keeps his own movement\n");
@@ -216,12 +248,8 @@ void Track(CEntity *pen) {
 };
 
 void OnAction(const CPlayerAction &pa, BOOL bFresh) {
-  if (!bFresh) return;
-  const FLOAT3D &vKeys = pa.pa_vTranslation;
-  _keys.fForward = Clamp(-vKeys(3) / SAM_RUN, -1.0f, 1.0f);
-  _keys.fSide = Clamp(vKeys(1) / SAM_RUN, -1.0f, 1.0f);
-  _keys.bJump = vKeys(2) > 0.1f;
-  _keys.bDuck = vKeys(2) < -0.01f;
+  // (the keys come from the applied action when that's hooked: exactly the tick's, also when it's not this machine's)
+  if (bFresh && !_bActionHooked) TakeKeys(pa);
 };
 
 FLOAT3D Wish(CEntity *pen, const State &st, FLOAT fForward, FLOAT fSide, FLOAT fAt) {
@@ -239,6 +267,7 @@ void Release(void) {
 };
 
 BOOL Active(void) { return _bTaken; };
+CEntity *Tracked(void) { return _penTracked; };
 
 CTString Status(void) {
   CTString str;

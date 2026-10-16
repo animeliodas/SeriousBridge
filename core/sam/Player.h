@@ -14,6 +14,7 @@ static const ULONG PROP_ARMOR = (401UL << 8) | 3;
 static const ULONG PROP_TOPHEALTH = (401UL << 8) | 6;       // m_fMaxHealth: the health a level starts with (100; 200 on easy)
 static const ULONG PROP_VIEWSTATE = (401UL << 8) | 20;      // m_iViewState: PVT_3RDPERSONVIEW = 3
 static const ULONG PROP_STATE = (401UL << 8) | 34;          // m_pstState: PlayerState below
+static const ULONG PROP_FALLTIME = (401UL << 8) | 35;       // m_fFallTime: off the ground this long (0.5 s: falling)
 static const ULONG PROP_CAMERA = (401UL << 8) | 40;         // m_penCamera: a cinematic (a level's intro) plays while set
 static const ULONG PROP_ACTION_MARKER = (401UL << 8) | 110; // m_penActionMarker: auto actions (walking to a marker) while set
 static const ULONG PROP_LAST_ROTATION = (401UL << 8) | 151; // what the last applied action carried

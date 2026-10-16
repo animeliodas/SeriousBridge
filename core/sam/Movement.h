@@ -51,6 +51,8 @@ struct Result {
   FLOAT3D vMove;     // m/s, the average over the tick: Sam moves him by vMove * tick (and the engine's collision)
   FLOAT3D vEnd;      // m/s at the tick's end: the next tick's State.vVelocity starts from it
   BOOL bJumped;      // he left the ground by a jump (Sam's ground contact is dropped, the jump sound plays)
+  BOOL bLifted;      // he left the ground otherwise (dropped, no sound)
+  BOOL bHoldCrouch;  // let Sam crouch in the air however long he's been off the ground (Player.es: only the first 0.5 s)
 };
 
 // The rules: FALSE - not now, Sam moves him this tick by his own.
@@ -61,7 +63,8 @@ typedef BOOL (*Rules)(CEntity *penPlayer, const State &st, Result &res);
 BOOL Init(Rules pRules);
 // Every tick (OnStep): the player whose movement the rules take (the local one; NULL: none).
 void Track(CEntity *penPlayer);
-// Every player action: its keys.
+// Every player action (from the network): its keys - used only if the applied action (CPlayer::ApplyAction in the
+// Entities library) couldn't be hooked.
 void OnAction(const CPlayerAction &pa, BOOL bFresh);
 // Keys relative to the view (fForward ahead, fSide to the right), as the view was at fAt of the tick (0 its start, 1
 // now): an absolute horizontal vector as long as the input.
@@ -69,6 +72,8 @@ FLOAT3D Wish(CEntity *penPlayer, const State &st, FLOAT fForward, FLOAT fSide, F
 // Start from scratch (a level ends: a new player entity comes).
 void Release(void);
 BOOL Active(void);
+// The player Track() was given (NULL: none).
+CEntity *Tracked(void);
 CTString Status(void);
 
 }; // namespace
