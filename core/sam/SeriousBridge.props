@@ -9,7 +9,7 @@
   "seriousbridge" next to the port's). The core's sources are compiled into the port's DLL with the port's precompiled
   header StdH.h, which defines SB_NAME and friends (SBridge.h).
 
-  Always: Alloc (the engine's heap), Player, Physics, Movement, DevHook.
+  Always: Alloc (the engine's heap), Player, Physics, Movement, Speedrun (timer, LiveSplit), DevHook.
   SBridgeGuestBeside=true adds what a guest game running next to Sam needs (SemCraft 2): the link (WebSocket), the
   level export, moving brushes, monsters, weapons, the guest's solid cells and its frame composited with depth.
 -->
@@ -27,11 +27,17 @@
     <ClInclude Include="$(SeriousBridgeCore)Player.h" />
     <ClInclude Include="$(SeriousBridgeCore)Physics.h" />
     <ClInclude Include="$(SeriousBridgeCore)Movement.h" />
+    <ClInclude Include="$(SeriousBridgeCore)Speedrun.h" />
+    <ClInclude Include="$(SeriousBridgeCore)SpeedrunLink.h" />
     <ClInclude Include="$(SeriousBridgeCore)DevHook.h" />
     <ClCompile Include="$(SeriousBridgeCore)Alloc.cpp" />
     <ClCompile Include="$(SeriousBridgeCore)Player.cpp" />
     <ClCompile Include="$(SeriousBridgeCore)Physics.cpp" />
     <ClCompile Include="$(SeriousBridgeCore)Movement.cpp" />
+    <ClCompile Include="$(SeriousBridgeCore)Speedrun.cpp" />
+    <ClCompile Include="$(SeriousBridgeCore)SpeedrunLink.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="$(SeriousBridgeCore)DevHook.cpp" />
   </ItemGroup>
   <ItemGroup Condition="'$(SBridgeGuestBeside)' == 'true'">

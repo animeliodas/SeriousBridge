@@ -10,6 +10,7 @@ namespace movement {
 
 // Sam's running speeds (Player.es plr_fSpeedForward, plr_fSpeedSide: what his keys give, m/s)
 static const FLOAT SAM_RUN = 10.0f;
+static const FLOAT SAM_UP = 11.0f; // plr_fSpeedUp
 
 static Rules _pRules = NULL;
 static ActionFilter _pActionFilter = NULL;
@@ -204,8 +205,21 @@ static void TakeKeys(const CPlayerAction &pa) {
   const FLOAT3D &vKeys = pa.pa_vTranslation;
   _keys.fForward = Clamp(-vKeys(3) / SAM_RUN, -1.0f, 1.0f);
   _keys.fSide = Clamp(vKeys(1) / SAM_RUN, -1.0f, 1.0f);
-  _keys.bJump = vKeys(2) > 0.1f;
+  _keys.bJump = vKeys(2) > 0.1f || (pa.pa_ulButtons & ACTION_JUMP_WITH_DUCK);
   _keys.bDuck = vKeys(2) < -0.01f;
+};
+
+// Sam's controls add jump and crouch into one number (up - down): both held come out as neither, and Sam stands up.
+static CSymbolPtr _symMoveUp, _symMoveDown;
+
+static void JumpWithDuck(CPlayerAction &pa) {
+  if (!_symMoveUp.Exists()) _symMoveUp.Find("ctl_bMoveUp");
+  if (!_symMoveDown.Exists()) _symMoveDown.Find("ctl_bMoveDown");
+  if (!_symMoveUp.Exists() || !_symMoveDown.Exists()) return;
+  if (_symMoveUp.GetIndex() && _symMoveDown.GetIndex()) {
+    pa.pa_vTranslation(2) = -SAM_UP;
+    pa.pa_ulButtons |= ACTION_JUMP_WITH_DUCK;
+  }
 };
 
 // the action Player.es applies this tick (CPlayer::ApplyAction, in the Entities library): its keys are the tick's own
@@ -220,6 +234,7 @@ public:
       CPlayerAction paPort = pa;
       if (_pActionFilter != NULL) _pActionFilter(this, paPort);
       TakeKeys(paPort);
+      paPort.pa_ulButtons &= ~ACTION_JUMP_WITH_DUCK; // (not Player.es's)
       (this->*_pApplyAction)(paPort, tmLatency);
       return;
     }
@@ -255,7 +270,9 @@ void Track(CEntity *pen) {
   _ulTracked = pen != NULL ? pen->en_ulID : 0;
 };
 
-void OnAction(const CPlayerAction &pa, BOOL bFresh) {
+void OnAction(CPlayerAction &pa, BOOL bFresh) {
+  // jump and duck both held travel in the action (the local player's controls; this game is single player)
+  if (_pRules != NULL && _penTracked != NULL) JumpWithDuck(pa);
   // (the keys come from the applied action when that's hooked: exactly the tick's, also when it's not this machine's)
   if (bFresh && !_bActionHooked) TakeKeys(pa);
 };

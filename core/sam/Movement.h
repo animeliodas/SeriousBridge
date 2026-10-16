@@ -67,9 +67,12 @@ void Track(CEntity *penPlayer);
 // buttons out - SeriousHL's weapons take fire and reload). Needs the applied action hooked (Init).
 typedef void (*ActionFilter)(CEntity *penPlayer, CPlayerAction &pa);
 void SetActionFilter(ActionFilter pFilter);
-// Every player action (from the network): its keys - used only if the applied action (CPlayer::ApplyAction in the
-// Entities library) couldn't be hooked.
-void OnAction(const CPlayerAction &pa, BOOL bFresh);
+// Every player action (from the network): jump and duck held together are put into it (ACTION_JUMP_WITH_DUCK: Sam's
+// controls add the two into one number, so both held came out as neither); its keys, if the applied action
+// (CPlayer::ApplyAction in the Entities library) couldn't be hooked.
+void OnAction(CPlayerAction &pa, BOOL bFresh);
+// In an action: the jump held while ducking (the action's up-down is the duck's). Taken out before Player.es sees it.
+static const ULONG ACTION_JUMP_WITH_DUCK = 1UL << 31;
 // Keys relative to the view (fForward ahead, fSide to the right), as the view was at fAt of the tick (0 its start, 1
 // now): an absolute horizontal vector as long as the input.
 FLOAT3D Wish(CEntity *penPlayer, const State &st, FLOAT fForward, FLOAT fSide, FLOAT fAt);
