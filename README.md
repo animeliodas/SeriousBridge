@@ -9,7 +9,8 @@ SeriousBridge — ядро «мостов» между Serious Sam Classic (The 
 | **SeriousBridge** (этот) | ядро для плагинов Sam (`core/sam`), протокол, физика, транспорт, проверочные стенды |
 | [SemCraft 2](https://github.com/animeliodas/SemCraft2) | Minecraft 26.3 внутри Sam: гость работает рядом, его мир вклеивается в кадр Sam с глубиной; блоки, мобы, оружие, элитры, вода, поршни, лодки, интерфейс Minecraft, Стив от третьего лица |
 | [SeriousPortal](https://github.com/animeliodas/SeriousPortal) | портальная пушка Portal: правила Portal переписаны в плагине, звуки — из вашей Portal |
-| [SeriousHL](https://github.com/animeliodas/SeriousHL) | Half-Life 1: движение (банихоп, присед, бусты), оружие HL на стволах Сэма; сборка для спидрана с таймером и LiveSplit; установка в один клик |
+| [SeriousHL](https://github.com/animeliodas/SeriousHL) | Half-Life 1: движение (банихоп, присед, бусты), оружие HL на стволах Сэма; сборка для спидрана; установка в один клик |
+| [SeriousSpeedrun](https://github.com/animeliodas/SeriousSpeedrun) | таймер спидрана RTA/IGT, LiveSplit, спидометр — для обычной игры и вместе с модами |
 | Doom (в планах) | классический Doom — [ROADMAP](docs/ROADMAP.md) |
 
 > Сделано с помощью Claude Code (ИИ). Всё «работает» — с оракулами в реальной игре (скрипты печатают PASS/FAIL); что
