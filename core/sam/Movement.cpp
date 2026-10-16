@@ -13,6 +13,7 @@ static const FLOAT SAM_RUN = 10.0f;
 static const FLOAT SAM_UP = 11.0f; // plr_fSpeedUp
 
 static Rules _pRules = NULL;
+static BOOL _bTakeWater = FALSE;
 static ActionFilter _pActionFilter = NULL;
 static BOOL _bHooked = FALSE, _bActionHooked = FALSE, _bBroken = FALSE;
 static CEntity *_penTracked = NULL;
@@ -56,8 +57,54 @@ static const char *SamsNow(CEntity *pen) {
   if (player::PropEntity(pen, player::PROP_ACTION_MARKER) != NULL) return "auto action";
   if (player::PropEntity(pen, player::PROP_CAMERA) != NULL) return "cinematic";
   const INDEX iState = player::PropIndex(pen, player::PROP_STATE, player::PST_STAND);
-  if (iState == player::PST_SWIM || iState == player::PST_DIVE || InWater((CMovableEntity *)pen)) return "water";
+  if (!_bTakeWater && (iState == player::PST_SWIM || iState == player::PST_DIVE || InWater((CMovableEntity *)pen))) return "water";
   return NULL;
+};
+
+// --- water: points tested against the swimmable sectors he's in (their BSP: a point's side of each split plane)
+static BOOL InSector(CBrushSector &bsc, const DOUBLE3D &vPoint) {
+  const DOUBLEbspnode3D *pbn = bsc.bsc_bspBSPTree.bt_pbnRoot;
+  while (pbn != NULL && pbn->bn_bnlLocation == BNL_BRANCH) {
+    pbn = pbn->PointDistance(vPoint) >= 0.0 ? pbn->bn_pbnFront : pbn->bn_pbnBack;
+  }
+  return pbn != NULL && pbn->bn_bnlLocation == BNL_INSIDE;
+};
+
+static BOOL SwimmableSector(CWorld *pwo, CBrushSector &bsc) {
+  if (!bsc.bsc_pbmBrushMip->IsFirstMip()) return FALSE;
+  if (bsc.bsc_pbmBrushMip->bm_pbrBrush->br_penEntity->en_RenderType != CEntity::RT_BRUSH) return FALSE;
+  const INDEX iContent = bsc.GetContentType();
+  return iContent != 0 && iContent < pwo->wo_actContentTypes.Count() && (pwo->wo_actContentTypes[iContent].ct_ulFlags & CTF_SWIMABLE);
+};
+
+BOOL PointInWater(CEntity *pen, const FLOAT3D &vPoint) {
+  CWorld *pwo = pen->GetWorld();
+  const DOUBLE3D vD = FLOATtoDOUBLE(vPoint);
+  {FOREACHSRCOFDST(pen->en_rdSectors, CBrushSector, bsc_rsEntities, pbsc)
+    if (SwimmableSector(pwo, *pbsc) && InSector(*pbsc, vD)) return TRUE;
+  ENDFOR;}
+  return FALSE;
+};
+
+FLOAT WaterAbove(CEntity *pen, FLOAT fReach) {
+  CWorld *pwo = pen->GetWorld();
+  BOOL bAny = FALSE;
+  {FOREACHSRCOFDST(pen->en_rdSectors, CBrushSector, bsc_rsEntities, pbsc)
+    if (SwimmableSector(pwo, *pbsc)) bAny = TRUE;
+  ENDFOR;}
+  if (!bAny) return 0.0f;
+  const FLOAT3D vUp = -((CMovableEntity *)pen)->en_vGravityDir;
+  const FLOAT fBottom = pen->en_pciCollisionInfo != NULL ? pen->en_pciCollisionInfo->ci_fMinHeight : 0.0f;
+  const FLOAT3D vFeet = pen->GetPlacement().pl_PositionVector + vUp * fBottom;
+  if (!PointInWater(pen, vFeet + vUp * 0.01f)) return 0.0f;
+  if (PointInWater(pen, vFeet + vUp * fReach)) return WATER_DEEP;
+  // the surface between: halved down to a millimetre
+  FLOAT fIn = 0.01f, fOut = fReach;
+  while (fOut - fIn > 0.001f) {
+    const FLOAT fMid = (fIn + fOut) * 0.5f;
+    if (PointInWater(pen, vFeet + vUp * fMid)) fIn = fMid; else fOut = fMid;
+  }
+  return fIn;
 };
 
 // The view's heading as it will be after this tick: the body's, the head's (relative to it), and what Player.es has
@@ -89,6 +136,10 @@ static void FillState(CMovableEntity *pmen, State &st) {
   st.fView = ViewRelative(pmen);
   const ANGLE aHeading = pmen->GetPlacement().pl_OrientationAngle(1) + st.fView;
   st.fTurn = _bLastHeading ? NormalizeAngle(aHeading - _aLastHeading) : 0.0f;
+  st.fPitch = ((CPlayerEntity *)pmen)->en_plViewpoint.pl_OrientationAngle(2);
+  st.fWater = WaterAbove(pmen, 3.0f);
+  const CCollisionInfo *pci = pmen->en_pciCollisionInfo;
+  st.fHeight = pci != NULL ? pci->ci_fMaxHeight - pci->ci_fMinHeight : 1.9f;
   _aLastHeading = aHeading;
   _bLastHeading = TRUE;
 };
@@ -114,28 +165,56 @@ static void Apply(CMovableEntity *pmen, const Result &res) {
   }
   CEntity *penReference = pmen->en_penReference.ep_pen;
 
-  // Sam's gravity this tick (the rest of PreMoving): in the air, full - unless he'd fall faster than the level's top
-  // falling speed, then none; on the ground, only what pulls along its plane (none on a flat floor); on something
-  // moving up or down, full. It goes out of what he's given, so his speed is the rules'.
+  // Sam's gravity this tick (the rest of PreMoving), with the fluid he's in (MovableEntity.es PreMovingNew): the
+  // buoyancy (1 - the contents' densities over his, by how immersed he is) scales it, the contents' speed multiplier
+  // the top falling speed. Swimming (buoyancy x gravity under 0.5 in a swimmable content), the engine pulls his whole
+  // velocity towards the top sinking speed (or the floating one) by at most buoyancy x gravity a tick: given exactly
+  // that much less towards it, he comes out at the rules' velocity. Otherwise in the air, full - unless he'd fall faster
+  // than the top falling speed, then none; on the ground, only what pulls along its plane (none on a flat floor); on
+  // something moving up or down, full. It goes out of what he's given, so his speed is the rules'. (The fluid's friction
+  // and the control are Sam's acceleration and deceleration: zero.) The contents are last tick's: the engine finds this
+  // tick's after this.
   const FLOAT3D vGDir = pmen->en_vGravityDir;
   const FLOAT fGA = pmen->en_fGravityA;
+  CWorld *pwo = pmen->GetWorld();
+  const CContentType &ctDn = pwo->wo_actContentTypes[pmen->en_iDnContent];
+  const CContentType &ctUp = pwo->wo_actContentTypes[pmen->en_iUpContent];
+  const FLOAT fImmersion = pmen->en_fImmersionFactor;
+  const FLOAT fDensity = pmen->en_fDensity > 0.0f ? pmen->en_fDensity : 1.0f;
+  const FLOAT fBuoyancy = 1.0f - (ctDn.ct_fDensity / fDensity) * fImmersion - (ctUp.ct_fDensity / fDensity) * (1.0f - fImmersion);
+  const FLOAT fSpeedModifier = ctDn.ct_fSpeedMultiplier * fImmersion + ctUp.ct_fSpeedMultiplier * (1.0f - fImmersion);
+  const BOOL bSwimming = fBuoyancy * fGA < 0.5f && (ctDn.ct_ulFlags & (CTF_SWIMABLE | CTF_FLYABLE));
   FLOAT3D vBase(0, 0, 0);
   BOOL bFull = penReference == NULL;
   if (penReference != NULL && (penReference->en_ulPhysicsFlags & EPF_MOVABLE)) {
     vBase = ((CMovableEntity *)penReference)->en_vCurrentTranslationAbsolute;
     if (Abs(vBase % vGDir) > 0.0f) bFull = TRUE;
   }
-  FLOAT3D vGravity(0, 0, 0);
-  if (fGA > 0.0f) {
+  FLOAT3D vSet = res.vMove;
+  if (bSwimming) {
+    FLOAT3D vTowards(0, 0, 0);
+    FLOAT fPull = 0.0f;
+    if (fBuoyancy < -0.1f) {
+      vTowards = -vGDir * (pmen->en_fGravityV * fSpeedModifier);
+      fPull = fGA * -fBuoyancy * tmTick;
+    } else if (fBuoyancy > 0.1f) {
+      vTowards = vGDir * (pmen->en_fGravityV * fSpeedModifier);
+      fPull = fGA * fBuoyancy * tmTick;
+    }
+    const FLOAT3D vTo = vTowards - res.vMove;
+    const FLOAT fTo = vTo.Length();
+    if (fPull > 0.0f && fTo > 0.0001f) vSet = res.vMove - vTo * (fPull / fTo);
+  } else if (fGA > 0.0f) {
+    const FLOAT fGAHere = fGA * fBuoyancy;
     if (bFull) {
-      if ((res.vMove % vGDir) < pmen->en_fGravityV) vGravity = vGDir * (fGA * tmTick);
+      if ((res.vMove % vGDir) < pmen->en_fGravityV * fSpeedModifier) vSet -= vGDir * (fGAHere * tmTick);
     } else {
       const FLOAT3D &vN = pmen->en_vReferencePlane;
       const FLOAT3D vAlong = vGDir - vN * (vGDir % vN);
-      if (vAlong.Length() > 0.001f) vGravity = vAlong * (fGA * tmTick);
+      if (vAlong.Length() > 0.001f) vSet -= vAlong * (fGAHere * tmTick);
     }
   }
-  pmen->en_vCurrentTranslationAbsolute = res.vMove - vGravity;
+  pmen->en_vCurrentTranslationAbsolute = vSet;
   // Sam's impact damage (speed lost to a wall or the floor) is not the rules'
   pmen->en_ulPhysicsFlags |= EPF_NOIMPACTTHISTICK;
   pmen->AddToMovers();
@@ -284,6 +363,8 @@ FLOAT3D Wish(CEntity *pen, const State &st, FLOAT fForward, FLOAT fSide, FLOAT f
   const FLOAT3D vRelative = FLOAT3D(fSide, 0.0f, -fForward) * mView;
   return vRelative * pen->GetRotationMatrix();
 };
+
+void TakeWater(BOOL bTake) { _bTakeWater = bTake; };
 
 void Release(void) {
   GiveToSam("released");

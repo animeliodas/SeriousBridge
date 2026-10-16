@@ -11,8 +11,10 @@
  *     (sliding, steps);
  *   - the level's gravity, which the engine still adds, is taken back out of it (the port has its own);
  *   - Sam's impact damage is off (fast movers hit walls; a port's rules have their own fall damage).
- * Sam keeps the movement while the player isn't alive, swims or dives, plays an auto action or a cinematic (a level's
- * intro or ending), flies by a cheat, or the port's rules say so; it comes back to the port by itself after that.
+ * Sam keeps the movement while the player isn't alive, swims or dives (unless the port takes the water too:
+ * TakeWater), plays an auto action or a cinematic (a level's intro or ending), flies by a cheat, or the port's rules say
+ * so; it comes back to the port by itself after that. In water the engine's own fluid physics (buoyancy by the player's
+ * density, the pull to a sinking or floating speed while swimming) is taken back out as the gravity is.
  *
  * A port: movement::Init(rules) in its startup; movement::Track(player::Local()) every tick (OnStep); movement::OnAction
  * for every player action (OnPlayerAction). One port at a time may take the player's movement.
@@ -44,7 +46,12 @@ struct State {
   Keys keys;         // the latest action's
   FLOAT fTurn;       // degrees the view turned since the last tick (heading, left positive)
   FLOAT fView;       // (the view's heading relative to the body, for Wish)
+  FLOAT fPitch;      // the view's pitch, degrees (up positive)
+  FLOAT fWater;      // metres above the bottom of his collision box the water reaches (0: none there; WATER_DEEP: deeper
+                     // than tested) - Sam's boxes differ: standing it's from his feet up, swimming around his middle
+  FLOAT fHeight;     // his collision box's height, metres
 };
+static const FLOAT WATER_DEEP = 1000.0f;
 
 // What the port's rules give for the tick.
 struct Result {
@@ -76,6 +83,13 @@ static const ULONG ACTION_JUMP_WITH_DUCK = 1UL << 31;
 // Keys relative to the view (fForward ahead, fSide to the right), as the view was at fAt of the tick (0 its start, 1
 // now): an absolute horizontal vector as long as the input.
 FLOAT3D Wish(CEntity *penPlayer, const State &st, FLOAT fForward, FLOAT fSide, FLOAT fAt);
+// The port's rules move him in water too (default: Sam swims by his own).
+void TakeWater(BOOL bTake);
+// Whether a point is inside a swimmable sector the player is in (as Half-Life's PM_CheckWater tests points).
+BOOL PointInWater(CEntity *penPlayer, const FLOAT3D &vPoint);
+// How high above the bottom of his collision box the water reaches, up to fReach metres (WATER_DEEP beyond; 0 if
+// it's not at the bottom).
+FLOAT WaterAbove(CEntity *penPlayer, FLOAT fReach);
 // Start from scratch (a level ends: a new player entity comes).
 void Release(void);
 BOOL Active(void);
